@@ -1,7 +1,7 @@
 <?php
-ini_set('display_errors', 1); // Keep for debugging
-ini_set('display_startup_errors', 1); // Keep for debugging
-error_reporting(E_ALL); // Keep for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 require_once '../../includes/db_connect.php';
 require_once '../../includes/functions.php';
@@ -37,14 +37,13 @@ if ($result_sizes_all && $result_sizes_all->num_rows > 0) {
     }
 }
 
-
 // --- Initialize variables for form fields and errors ---
 $exporter_id = $invoice_number = $invoice_date = $consignee_id = $final_destination = "";
 $total_container = $container_size = $currency_type = $total_gross_weight_kg = "";
 $bank_id = $freight_amount = $discount_amount = "";
 $notify_party_line1 = $notify_party_line2 = $terms_delivery_payment = $note = "";
 $errors = [];
-$item_errors = []; // For item specific errors
+$item_errors = [];
 
 // Default values
 $invoice_number_default = generate_invoice_number($conn);
@@ -56,9 +55,8 @@ $note_default = "TRANSSHIPMENT ALLOWED. : PARTIAL SHIPMENT ALLOWED\nSHIPMENT : A
 
 // --- POST request Processing ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $conn->begin_transaction(); // START TRANSACTION
+    $conn->begin_transaction();
 
-    // Assign POST values for header
     $exporter_id = trim($_POST['exporter_id']);
     $invoice_number = trim($_POST['invoice_number']);
     $invoice_date = trim($_POST['invoice_date']);
@@ -76,7 +74,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $terms_delivery_payment = trim($_POST['terms_delivery_payment']);
     $note = trim($_POST['note']);
 
-    // --- Header Validations ---
     if (empty($exporter_id)) $errors['exporter_id'] = "Exporter is required.";
     if (empty($invoice_number)) $errors['invoice_number'] = "Invoice number is required.";
     else {
@@ -91,7 +88,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     if (empty($invoice_date)) $errors['invoice_date'] = "Invoice date is required.";
     if (empty($consignee_id)) $errors['consignee_id'] = "Consignee is required.";
-    // ... (other header validations)
 
     if (empty($errors)) {
         $sql_header_insert = "INSERT INTO performa_invoices (exporter_id, invoice_number, invoice_date, consignee_id, final_destination,
@@ -101,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         if ($stmt_header = $conn->prepare($sql_header_insert)) {
-            $stmt_header->bind_param("ississssdi ddssss",
+            $stmt_header->bind_param("ississssdiddssss",
                 $exporter_id, $invoice_number, $invoice_date, $consignee_id, $final_destination,
                 $total_container, $container_size, $currency_type, $param_total_gross_weight_kg,
                 $param_bank_id, $param_freight_amount, $param_discount_amount, $notify_party_line1,
@@ -117,14 +113,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $new_pi_id = $stmt_header->insert_id;
                 $stmt_header->close();
 
-                // --- Process Invoice Items ---
                 $item_size_ids = $_POST['item_size_id'] ?? [];
                 $item_product_ids = $_POST['item_product_id'] ?? [];
                 $item_boxes_arr = $_POST['item_boxes'] ?? [];
                 $item_rates_arr = $_POST['item_rate_per_sqm'] ?? [];
                 $item_commissions_arr = $_POST['item_commission_percentage'] ?? [];
 
-                if (!empty($item_size_ids) && count($item_size_ids) > 0) { // Check if there are any items
+                if (!empty($item_size_ids) && count($item_size_ids) > 0) {
                     $sql_item_insert = "INSERT INTO performa_invoice_items
                                         (performa_invoice_id, size_id, product_id, boxes, rate_per_sqm, commission_percentage, quantity_sqm, amount)
                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -134,7 +129,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         for ($i = 0; $i < count($item_size_ids); $i++) {
                             if (empty($item_size_ids[$i]) || empty($item_product_ids[$i]) || !isset($item_boxes_arr[$i]) || $item_boxes_arr[$i] === '' || !isset($item_rates_arr[$i]) || $item_rates_arr[$i] === '') {
                                 $item_errors[] = "Error in item #".($i+1).": Size, Product, Boxes, and Rate are required.";
-                                continue; // Skip this item, or rollback and show error
+                                continue;
                             }
 
                             $item_size_id = (int)$item_size_ids[$i];
@@ -174,10 +169,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             }
                         }
                         $stmt_item->close();
-                    } else { // $stmt_item prepare failed
+                    } else {
                          $errors['db_error'] = "Error preparing item insert statement: " . $conn->error;
                     }
-                } // else: no items submitted, proceed with header only if allowed
+                }
 
                 if (empty($item_errors) && empty($errors['db_error'])) {
                     $conn->commit();
@@ -185,11 +180,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     exit();
                 } else {
                     $conn->rollback();
-                    // Consolidate item errors into db_error for display
                     if(!empty($item_errors)) $errors['db_error'] = ($errors['db_error'] ?? "") . "<br>Item Errors:<br>" . implode("<br>", $item_errors);
                 }
 
-            } else { // Header insert failed
+            } else {
                 $conn->rollback();
                 if ($conn->errno == 1062 && strpos($stmt_header->error, 'unique_invoice_number') !== false) {
                      $errors['db_error'] = "Database Error: This Invoice Number already exists.";
@@ -197,13 +191,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $errors['db_error'] = "Database error creating performa invoice header: " . $stmt_header->error;
                 }
             }
-        } else { // Header prepare failed
+        } else {
             $errors['db_error'] = "Error preparing PI header statement: " . $conn->error;
-            // No transaction started if prepare failed, so no rollback needed here.
         }
-    } // End if empty($errors) for header
-    else { // Header validation errors
-        // No transaction started, so no rollback needed.
+    }
+    else {
+        $conn->rollback();
     }
 } else {
     $invoice_number = $invoice_number_default;
@@ -222,11 +215,10 @@ require_once '../../includes/header.php';
     <h2>Add New Performa Invoice</h2>
 
     <?php if (!empty($errors['db_error'])): ?>
-        <div class="alert alert-danger"><?php echo $errors['db_error']; /* Allow HTML for item errors */ ?></div>
+        <div class="alert alert-danger"><?php echo $errors['db_error']; ?></div>
     <?php endif; ?>
 
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" id="performaInvoiceForm">
-        <!-- Header Fields Section -->
         <h4 class="mt-3">Invoice Header</h4>
         <hr>
         <div class="row">
@@ -362,7 +354,6 @@ require_once '../../includes/header.php';
             <textarea name="note" class="form-control" rows="5"><?php echo htmlspecialchars($note); ?></textarea>
         </div>
 
-        <!-- Invoice Items Section -->
         <div class="form-group mt-4">
             <h4 class="border-bottom pb-2 mb-3">Invoice Items</h4>
             <table class="table table-bordered" id="invoice_items_table">
@@ -379,24 +370,18 @@ require_once '../../includes/header.php';
                     </tr>
                 </thead>
                 <tbody id="invoice_items_table_body">
-                    <!-- Item rows will be appended here by JavaScript -->
-                     <?php
-                    // For sticky form: if there was a POST and errors, repopulate items
+                    <?php
                     $posted_item_size_ids = $_POST['item_size_id'] ?? [];
                     if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($posted_item_size_ids)) {
                         for ($i=0; $i < count($posted_item_size_ids); $i++) {
-                            // This is a simplified repopulation. Does not re-fetch product options.
-                            // A full solution would involve more complex JS state or server-side rendering of rows.
-                            echo '<tr class="invoice-item-row">'; // Class for easier selection if needed
+                            echo '<tr class="invoice-item-row">';
                             echo '<td><select name="item_size_id[]" class="form-control item-size" required><option value="">-- Select Size --</option>';
                             foreach($sizes_dropdown_data as $s) {
                                 $sel = ($s['id'] == ($_POST['item_size_id'][$i] ?? '')) ? 'selected' : '';
-                                echo "<option value='{$s['id']}' data-sqm_per_box='{$s['sqm_per_box']}' {$sel}>".htmlspecialchars($s['size_prefix'] . " [" . $s['size_text'] . "]")."</option>";
+                                echo "<option value='{$s['id']}' data-sqm_per_box='".htmlspecialchars($s['sqm_per_box'])."' {$sel}>".htmlspecialchars($s['size_prefix'] . " [" . $s['size_text'] . "]")."</option>";
                             }
                             echo '</select></td>';
                             echo '<td><select name="item_product_id[]" class="form-control item-product" required><option value="">-- Select Product --</option>';
-                            // Products would need to be re-fetched based on selected size if we want to make this sticky properly.
-                            // For now, just showing selected ID if available.
                             if(isset($_POST['item_product_id'][$i]) && !empty($_POST['item_product_id'][$i])) {
                                 echo "<option value='".htmlspecialchars($_POST['item_product_id'][$i])."' selected>Product ID ".htmlspecialchars($_POST['item_product_id'][$i])." (Repopulate manually)</option>";
                             }
@@ -416,10 +401,10 @@ require_once '../../includes/header.php';
             <button type="button" class="btn btn-success mt-2" id="add_invoice_item_row">Add Item</button>
         </div>
 
-        <table style="display:none;"> <!-- Hidden template for invoice item rows -->
+        <table style="display:none;">
             <tr id="invoice_item_template_row" class="invoice-item-row">
                 <td>
-                    <select name="item_size_id[]" class="form-control item-size" required>
+                    <select name="item_size_id[]" class="form-control item-size" disabled>
                         <option value="">-- Select Size --</option>
                         <?php foreach($sizes_dropdown_data as $size_item_tpl): ?>
                         <option value="<?php echo $size_item_tpl['id']; ?>" data-sqm_per_box="<?php echo htmlspecialchars($size_item_tpl['sqm_per_box']); ?>">
@@ -429,15 +414,15 @@ require_once '../../includes/header.php';
                     </select>
                 </td>
                 <td>
-                    <select name="item_product_id[]" class="form-control item-product" required>
+                    <select name="item_product_id[]" class="form-control item-product" disabled>
                         <option value="">-- Select Product --</option>
                     </select>
                 </td>
-                <td><input type="number" name="item_boxes[]" class="form-control item-boxes" step="0.01" placeholder="Boxes" required></td>
-                <td><input type="number" name="item_rate_per_sqm[]" class="form-control item-rate" step="0.01" placeholder="Rate/SQM" required></td>
-                <td><input type="number" name="item_commission_percentage[]" class="form-control item-commission" step="0.01" placeholder="Comm %"></td>
-                <td><input type="text" class="form-control item-quantity-sqm-display" readonly placeholder="SQM"></td> <!-- Not submitted -->
-                <td><input type="text" class="form-control item-amount-display" readonly placeholder="Amount"></td> <!-- Not submitted -->
+                <td><input type="number" name="item_boxes[]" class="form-control item-boxes" step="0.01" placeholder="Boxes" disabled></td>
+                <td><input type="number" name="item_rate_per_sqm[]" class="form-control item-rate" step="0.01" placeholder="Rate/SQM" disabled></td>
+                <td><input type="number" name="item_commission_percentage[]" class="form-control item-commission" step="0.01" placeholder="Comm %" disabled></td>
+                <td><input type="text" class="form-control item-quantity-sqm-display" readonly placeholder="SQM"></td>
+                <td><input type="text" class="form-control item-amount-display" readonly placeholder="Amount"></td>
                 <td><button type="button" class="btn btn-danger btn-sm remove_invoice_item_row">Del</button></td>
             </tr>
         </table>
@@ -453,16 +438,34 @@ require_once '../../includes/header.php';
 document.addEventListener('DOMContentLoaded', function() {
     const itemsTableBody = document.getElementById('invoice_items_table_body');
     const addItemButton = document.getElementById('add_invoice_item_row');
-    const templateRowHTML = document.getElementById('invoice_item_template_row').innerHTML; // Get innerHTML of the template row
+    const templateRowHTML = document.getElementById('invoice_item_template_row').innerHTML;
 
     function addNewItemRow() {
         const newRow = itemsTableBody.insertRow();
-        newRow.className = 'invoice-item-row'; // Add class for styling or easier selection
+        newRow.className = 'invoice-item-row';
         newRow.innerHTML = templateRowHTML;
+
+        const sizeSelect = newRow.querySelector('.item-size');
+        const productSelect = newRow.querySelector('.item-product');
+        const boxesInput = newRow.querySelector('.item-boxes');
+        const rateInput = newRow.querySelector('.item-rate');
+        const commissionInput = newRow.querySelector('.item-commission');
+
+        sizeSelect.disabled = false;
+        sizeSelect.required = true;
+
+        productSelect.disabled = false;
+        productSelect.required = true;
+
+        boxesInput.disabled = false;
+        boxesInput.required = true;
+
+        rateInput.disabled = false;
+        rateInput.required = true;
+
+        if(commissionInput) commissionInput.disabled = false;
+
         attachEventListenersToRow(newRow);
-        if(itemsTableBody.querySelectorAll('tr').length === 1 && newRow.querySelector('.remove_invoice_item_row')) { // First row
-             // newRow.querySelector('.remove_invoice_item_row').disabled = true; // Disable delete for first row
-        }
     }
 
     function attachEventListenersToRow(rowElement) {
@@ -470,7 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const productSelect = rowElement.querySelector('.item-product');
         const boxesInput = rowElement.querySelector('.item-boxes');
         const rateInput = rowElement.querySelector('.item-rate');
-        // Commission input could also trigger recalculation if it affects amount, but not for now.
 
         if (sizeSelect) {
             sizeSelect.addEventListener('change', function() {
@@ -495,16 +497,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     option.dataset.price_per_sqm = product.effective_price_per_sqm;
                                     productSelect.appendChild(option);
                                 });
-                            } else if (data.products.length === 0) {
-                                // productSelect.innerHTML = '<option value="">-- No products --</option>';
-                            } else {
-                                console.error("Error/No products:", data.error);
                             }
                         })
-                        .catch(err => {
-                            console.error("AJAX error:", err);
-                            productSelect.innerHTML = '<option value="">-- Error --</option>';
-                        });
+                        .catch(err => { console.error("AJAX error:", err); productSelect.innerHTML = '<option value="">-- Error --</option>'; });
                 }
             });
         }
@@ -524,9 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (removeButton) {
             removeButton.addEventListener('click', function() {
                 rowElement.remove();
-                // if(itemsTableBody.querySelectorAll('tr').length === 1 && itemsTableBody.querySelector('.remove_invoice_item_row')) {
-                //      itemsTableBody.querySelector('.remove_invoice_item_row').disabled = true;
-                // }
             });
         }
     }
@@ -556,29 +548,21 @@ document.addEventListener('DOMContentLoaded', function() {
         addItemButton.addEventListener('click', addNewItemRow);
     }
 
-    // Attach listeners to any rows that might be server-rendered (e.g., on form error POST back)
     document.querySelectorAll('#invoice_items_table_body tr.invoice-item-row').forEach(row => {
         attachEventListenersToRow(row);
-        // Trigger calculation for existing rows if values are present
         const sizeSelect = row.querySelector('.item-size');
-        if(sizeSelect && sizeSelect.value) { // if a size is selected
+        if(sizeSelect && sizeSelect.value) {
             const selectedSizeOption = sizeSelect.options[sizeSelect.selectedIndex];
-            row.dataset.sqm_per_box = selectedSizeOption.dataset.sqm_per_box || '';
-             // If product is also selected, trigger its change to prefill rate
-            const productSelect = row.querySelector('.item-product');
-            if(productSelect && productSelect.value){
-                // This is tricky because product options are not repopulated by PHP here.
-                // For now, just calculate based on existing rate.
+            if(selectedSizeOption && selectedSizeOption.dataset.sqm_per_box){
+                 row.dataset.sqm_per_box = selectedSizeOption.dataset.sqm_per_box;
             }
         }
         calculateRowTotals(row);
     });
 
-    // Add one row by default if no items are present from POST back
     if (document.querySelectorAll('#invoice_items_table_body tr.invoice-item-row').length === 0) {
         addNewItemRow();
     }
-
 });
 </script>
 
