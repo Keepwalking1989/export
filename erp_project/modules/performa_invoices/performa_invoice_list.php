@@ -101,8 +101,7 @@ if (!$result) {
                         <td class="action-buttons">
                             <a href="performa_invoice_view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View">View</a>
                             <a href="performa_invoice_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-warning btn-sm" title="Edit">Edit/Add Items</a>
-                            <!-- Placeholders for PDF and PI buttons -->
-                            <button type="button" class="btn btn-secondary btn-sm" title="Generate PDF (Not Implemented)" disabled>PDF</button>
+                            <a href="generate_pi_pdf.php?id=<?php echo $row['id']; ?>" target="_blank" class="btn btn-secondary btn-sm" title="Generate PDF">PDF</a>
                             <button type="button" class="btn btn-light btn-sm border" title="Generate PI (Not Implemented)" disabled>PI</button>
                             <a href="performa_invoice_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this performa invoice? This will delete associated items as well.');">Del</a>
                         </td>
