@@ -91,6 +91,15 @@
                     <a class="dropdown-item" href="/erp_project/modules/performa_invoices/performa_invoice_list.php">View Performa Invoices</a>
                 </div>
             </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navPurchaseOrders" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Purchase Orders
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navPurchaseOrders">
+                    <a class="dropdown-item" href="/erp_project/modules/purchase_orders/purchase_order_list.php">View Purchase Orders</a>
+                    <!-- <a class="dropdown-item" href="/erp_project/modules/purchase_orders/purchase_order_add.php">Add PO Manually</a> --> <!-- Future option -->
+                </div>
+            </li>
             <!-- Add more menus here as modules are developed -->
         </ul>
     </div>

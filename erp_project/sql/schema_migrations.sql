@@ -15,6 +15,72 @@ CREATE TABLE IF NOT EXISTS `clients` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Create `purchase_orders` table
+CREATE TABLE IF NOT EXISTS `purchase_orders` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `performa_invoice_id` INT NOT NULL,
+  `exporter_id` INT NOT NULL,
+  `manufacturer_id` INT NOT NULL,
+  `po_number` VARCHAR(100) NOT NULL,
+  `po_date` DATE NOT NULL,
+  `number_of_containers` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY `unique_po_number` (`po_number`),
+  UNIQUE KEY `unique_performa_invoice_id_for_po` (`performa_invoice_id`),
+
+  CONSTRAINT `fk_po_performa_invoice`
+    FOREIGN KEY (`performa_invoice_id`)
+    REFERENCES `performa_invoices` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_po_exporter`
+    FOREIGN KEY (`exporter_id`)
+    REFERENCES `exporters` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_po_manufacturer`
+    FOREIGN KEY (`manufacturer_id`)
+    REFERENCES `manufacturers` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Create `purchase_order_items` table
+CREATE TABLE IF NOT EXISTS `purchase_order_items` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `purchase_order_id` INT NOT NULL,
+  `size_id` INT NOT NULL,
+  `product_id` INT NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `weight_per_box` DECIMAL(10,2) DEFAULT NULL,
+  `boxes` DECIMAL(10,2) NOT NULL,
+  `thickness` VARCHAR(50) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT `fk_po_item_purchase_order`
+    FOREIGN KEY (`purchase_order_id`)
+    REFERENCES `purchase_orders` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_po_item_size`
+    FOREIGN KEY (`size_id`)
+    REFERENCES `sizes` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_po_item_product`
+    FOREIGN KEY (`product_id`)
+    REFERENCES `products` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- Create `exporters` table
 CREATE TABLE IF NOT EXISTS `exporters` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,

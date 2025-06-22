@@ -102,7 +102,7 @@ if (!$result) {
                             <a href="performa_invoice_view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-sm" title="View">View</a>
                             <a href="performa_invoice_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-warning btn-sm" title="Edit">Edit/Add Items</a>
                             <a href="generate_pi_pdf.php?id=<?php echo $row['id']; ?>" target="_blank" class="btn btn-secondary btn-sm" title="Generate PDF">PDF</a>
-                            <button type="button" class="btn btn-light btn-sm border" title="Generate PI (Not Implemented)" disabled>PI</button>
+                            <a href="../purchase_orders/purchase_order_add.php?pi_id=<?php echo $row['id']; ?>" class="btn btn-success btn-sm" title="Create Purchase Order from this PI">Create PO</a>
                             <a href="performa_invoice_delete.php?id=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this performa invoice? This will delete associated items as well.');">Del</a>
                         </td>
                     </tr>

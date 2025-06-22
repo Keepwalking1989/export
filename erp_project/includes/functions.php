@@ -186,6 +186,58 @@ function numberToWords($number, $currency_major = 'DOLLARS', $currency_minor = '
     return trim(strtoupper($result_string));
 }
 
+/**
+ * Generates the next sequential PO number.
+ * Format: HEM/PO/YY-YY/XXXX
+ * Example: HEM/PO/24-25/0001
+ *
+ * @param mysqli $conn The database connection object.
+ * @return string The next PO number.
+ */
+function generate_po_number($conn) {
+    // Determine current Indian financial year (April 1 to March 31)
+    $current_month = (int)date('m');
+    $current_year = (int)date('y'); // Two digit year
+
+    if ($current_month >= 4) { // April to December
+        $financial_year_start_yy = $current_year;
+        $financial_year_end_yy = $current_year + 1;
+    } else { // January to March
+        $financial_year_start_yy = $current_year - 1;
+        $financial_year_end_yy = $current_year;
+    }
+    $financial_year_str = sprintf("%02d-%02d", $financial_year_start_yy, $financial_year_end_yy);
+
+    $prefix = "HEM/PO/" . $financial_year_str . "/";
+
+    $sql = "SELECT po_number FROM purchase_orders WHERE po_number LIKE ? ORDER BY po_number DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Prepare failed for generate_po_number: (" . $conn->errno . ") " . $conn->error);
+        return $prefix . "ERROR";
+    }
+
+    $like_prefix = $prefix . "%";
+    $stmt->bind_param("s", $like_prefix);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $next_sequence_number = 1;
+    if ($result && $result->num_rows > 0) {
+        $last_po_row = $result->fetch_assoc();
+        $last_po_number_str = $last_po_row['po_number'];
+
+        $parts = explode('/', $last_po_number_str);
+        $last_sequence_str = end($parts);
+        if (is_numeric($last_sequence_str)) {
+            $next_sequence_number = (int)$last_sequence_str + 1;
+        }
+    }
+    $stmt->close();
+
+    return $prefix . sprintf("%04d", $next_sequence_number);
+}
+
 
 // You can add more utility functions here as needed.
 
